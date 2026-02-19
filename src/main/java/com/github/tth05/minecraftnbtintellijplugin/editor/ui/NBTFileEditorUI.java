@@ -3,6 +3,7 @@ package com.github.tth05.minecraftnbtintellijplugin.editor.ui;
 import com.github.tth05.minecraftnbtintellijplugin.NBTTagTreeNode;
 import com.github.tth05.minecraftnbtintellijplugin.NBTTagType;
 import com.github.tth05.minecraftnbtintellijplugin.util.NBTFileUtil;
+import com.github.tth05.minecraftnbtintellijplugin.util.NBTFormatDetector;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.actionSystem.ActionGroup;
 import com.intellij.openapi.actionSystem.ActionManager;
@@ -37,6 +38,7 @@ import java.awt.FlowLayout;
 import java.awt.event.ItemEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.IOException;
 import java.util.Enumeration;
 
 public class NBTFileEditorUI extends JPanel implements DataProvider {
@@ -50,7 +52,13 @@ public class NBTFileEditorUI extends JPanel implements DataProvider {
 	private boolean littleEndian;
 	private boolean network;
 	private boolean levelDat;
+	private boolean namelessRoot;
 	private final MutableInt levelDatVersion = new MutableInt();
+
+	private JBCheckBox leCheckbox;
+	private JBCheckBox networkCheckbox;
+	private JBCheckBox levelDatCheckbox;
+	private JBCheckBox namelessRootCheckbox;
 
 	public NBTFileEditorUI(@NotNull VirtualFile file, @NotNull Project project) {
 		this.setLayout(new BorderLayout());
@@ -73,27 +81,54 @@ public class NBTFileEditorUI extends JPanel implements DataProvider {
 			}
 		});
 
-		JBCheckBox leCheckbox = new JBCheckBox("Little Endian");
+		leCheckbox = new JBCheckBox("Little Endian");
 		leCheckbox.addItemListener(e -> littleEndian = e.getStateChange() == ItemEvent.SELECTED);
 
-		JBCheckBox networkCheckbox = new JBCheckBox("Network");
+		networkCheckbox = new JBCheckBox("Network");
 		networkCheckbox.addItemListener(e -> network = e.getStateChange() == ItemEvent.SELECTED);
 
-		JBCheckBox levelDatCheckbox = new JBCheckBox("level.dat");
+		levelDatCheckbox = new JBCheckBox("level.dat");
 		levelDatCheckbox.addItemListener(e -> levelDat = e.getStateChange() == ItemEvent.SELECTED);
+
+		namelessRootCheckbox = new JBCheckBox("Nameless Root");
+		namelessRootCheckbox.addItemListener(e -> namelessRoot = e.getStateChange() == ItemEvent.SELECTED);
 
 		northSection.add(loadButton);
 		northSection.add(leCheckbox);
 		northSection.add(networkCheckbox);
 		northSection.add(levelDatCheckbox);
+		northSection.add(namelessRootCheckbox);
 
 		this.add(northSection, BorderLayout.NORTH);
 	}
 
 	private JBLabel load(@NotNull VirtualFile file, @NotNull Project project, @NotNull JPanel northSection) {
 		levelDatVersion.setValue(0);
-		//Tree Section
-		DefaultMutableTreeNode root = NBTFileUtil.loadNBTFileIntoTree(file, this.littleEndian, this.network, this.levelDat ? this.levelDatVersion : null);
+
+		DefaultMutableTreeNode root = null;
+
+		// Try auto-detection first
+		try {
+			byte[] bytes = file.contentsToByteArray();
+			NBTFormatDetector.DetectionResult detected = NBTFormatDetector.detect(bytes);
+			if (detected != null) {
+				root = detected.root;
+				// Update checkbox state to reflect detected format
+				leCheckbox.setSelected(detected.littleEndian);
+				networkCheckbox.setSelected(detected.network);
+				levelDatCheckbox.setSelected(detected.levelDat);
+				namelessRootCheckbox.setSelected(detected.namelessRoot);
+				if (detected.levelDat)
+					levelDatVersion.setValue(detected.levelDatVersion);
+			}
+		} catch (IOException ignored) {
+		}
+
+		// If auto-detection failed, try with manual settings
+		if (root == null) {
+			root = NBTFileUtil.loadNBTFileIntoTree(file, this.littleEndian, this.network, this.levelDat ? this.levelDatVersion : null, this.namelessRoot);
+		}
+
 		if (root == null) {
 			levelDatVersion.setValue(0);
 			JBLabel errorText = new JBLabel("Invalid NBT File!");
@@ -158,7 +193,7 @@ public class NBTFileEditorUI extends JPanel implements DataProvider {
 		saveButton.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseReleased(MouseEvent e) {
-				NBTFileUtil.saveTreeToFile(NBTFileEditorUI.this.tree, file, project, littleEndian, network, levelDat ? levelDatVersion.getValue() : null);
+				NBTFileUtil.saveTreeToFile(NBTFileEditorUI.this.tree, file, project, littleEndian, network, levelDat ? levelDatVersion.getValue() : null, namelessRoot);
 			}
 		});
 
@@ -206,6 +241,10 @@ public class NBTFileEditorUI extends JPanel implements DataProvider {
 
 	public boolean isLevelDat() {
 		return levelDat;
+	}
+
+	public boolean isNamelessRoot() {
+		return namelessRoot;
 	}
 
 	public MutableInt getLevelDatVersion() {

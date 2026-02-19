@@ -30,8 +30,17 @@ public class NBTFileEditorPopupGroup extends ActionGroup {
 			NBTTagTreeNode node = (NBTTagTreeNode) nbtFileEditorUI.getTree().getLastSelectedPathComponent();
 			NBTTagTreeNode parent = (NBTTagTreeNode) node.getParent();
 
-			if (parent == null)
-				return new AnAction[] {new RenameAction(), new Separator(), new AddChildAction()};
+			if (parent == null) {
+				List<AnAction> rootActions = new ArrayList<>();
+				rootActions.add(new RenameAction());
+				rootActions.add(new Separator());
+				rootActions.add(new AddChildAction());
+				rootActions.add(new Separator());
+				rootActions.add(new CopyAsSNbtAction());
+				if (node.getType() == NBTTagType.COMPOUND || node.getType() == NBTTagType.LIST)
+					rootActions.add(new PasteFromSNbtAction());
+				return rootActions.toArray(new AnAction[0]);
+			}
 
 			if (parent.getType() != NBTTagType.BYTE_ARRAY &&
 					parent.getType() != NBTTagType.INT_ARRAY &&
@@ -50,6 +59,11 @@ public class NBTFileEditorPopupGroup extends ActionGroup {
 				actions.add(new AddChildAction());
 
 			actions.add(new DeleteAction());
+
+			actions.add(new Separator());
+			actions.add(new CopyAsSNbtAction());
+			if (node.getType() == NBTTagType.COMPOUND || node.getType() == NBTTagType.LIST)
+				actions.add(new PasteFromSNbtAction());
 
 			return actions.toArray(new AnAction[0]);
 		}

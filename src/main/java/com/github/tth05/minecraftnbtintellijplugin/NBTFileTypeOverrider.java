@@ -10,6 +10,7 @@ public class NBTFileTypeOverrider implements FileTypeOverrider {
 	@Nullable
 	@Override
 	public FileType getOverriddenFileType(@NotNull VirtualFile file) {
-		return "nbt".equals(file.getExtension()) ? NBTFileType.INSTANCE : null;
+		String ext = file.getExtension();
+		return ("nbt".equals(ext) || "dat".equals(ext)) ? NBTFileType.INSTANCE : null;
 	}
 }
