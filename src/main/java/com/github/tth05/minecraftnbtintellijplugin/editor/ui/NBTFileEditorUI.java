@@ -2,8 +2,14 @@ package com.github.tth05.minecraftnbtintellijplugin.editor.ui;
 
 import com.github.tth05.minecraftnbtintellijplugin.NBTTagTreeNode;
 import com.github.tth05.minecraftnbtintellijplugin.NBTTagType;
+import com.github.tth05.minecraftnbtintellijplugin.actions.CompareNBTFilesAction;
+import com.github.tth05.minecraftnbtintellijplugin.snbt.SNbtSerializer;
 import com.github.tth05.minecraftnbtintellijplugin.util.NBTFileUtil;
 import com.github.tth05.minecraftnbtintellijplugin.util.NBTFormatDetector;
+import com.intellij.diff.DiffContentFactory;
+import com.intellij.diff.DiffManager;
+import com.intellij.diff.contents.DiffContent;
+import com.intellij.diff.requests.SimpleDiffRequest;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.actionSystem.ActionGroup;
 import com.intellij.openapi.actionSystem.ActionManager;
@@ -11,6 +17,8 @@ import com.intellij.openapi.actionSystem.ActionPlaces;
 import com.intellij.openapi.actionSystem.ActionPopupMenu;
 import com.intellij.openapi.actionSystem.DataKey;
 import com.intellij.openapi.actionSystem.DataProvider;
+import com.intellij.openapi.fileChooser.FileChooser;
+import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.JBColor;
@@ -197,6 +205,39 @@ public class NBTFileEditorUI extends JPanel implements DataProvider {
 			}
 		});
 
+		JButton compareButton = new JButton("Compare...", AllIcons.Actions.Diff);
+		compareButton.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseReleased(MouseEvent e) {
+				if (NBTFileEditorUI.this.tree == null)
+					return;
+				VirtualFile otherFile = FileChooser.chooseFile(
+						FileChooserDescriptorFactory.createSingleFileDescriptor(),
+						project, null
+				);
+				if (otherFile == null)
+					return;
+
+				String otherSnbt = CompareNBTFilesAction.loadFileAsSnbt(otherFile);
+				if (otherSnbt == null)
+					return;
+
+				NBTTagTreeNode currentRoot = (NBTTagTreeNode) NBTFileEditorUI.this.tree.getModel().getRoot();
+				String currentSnbt = SNbtSerializer.serializePretty(currentRoot);
+
+				DiffContentFactory contentFactory = DiffContentFactory.getInstance();
+				DiffContent content1 = contentFactory.create(project, currentSnbt);
+				DiffContent content2 = contentFactory.create(project, otherSnbt);
+
+				SimpleDiffRequest request = new SimpleDiffRequest(
+						"NBT Diff: " + file.getName() + " vs " + otherFile.getName(),
+						content1, content2,
+						file.getName(), otherFile.getName()
+				);
+				DiffManager.getInstance().showDiff(project, request);
+			}
+		});
+
 		JBCheckBox autoSaveCheckbox = new JBCheckBox("Save On Change");
 		autoSaveCheckbox.setSelected(true);
 		autoSaveCheckbox.addItemListener(e -> autoSaveEnabled = e.getStateChange() == ItemEvent.SELECTED);
@@ -210,6 +251,7 @@ public class NBTFileEditorUI extends JPanel implements DataProvider {
 		}
 
 		northSection.add(saveButton);
+		northSection.add(compareButton);
 		northSection.add(autoSaveCheckbox);
 
 		return null;

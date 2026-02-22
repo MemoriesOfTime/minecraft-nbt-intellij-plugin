@@ -7,6 +7,7 @@
         <fileEditorProvider implementation="com.github.tth05.minecraftnbtintellijplugin.editor.NBTFileEditorProvider"/>
         <fileTypeOverrider implementation="com.github.tth05.minecraftnbtintellijplugin.NBTFileTypeOverrider"/>
         <notificationGroup displayType="STICKY_BALLOON" id="NBTSaveError"/>
+        <diff.DiffTool implementation="com.github.tth05.minecraftnbtintellijplugin.diff.NBTDiffTool" order="first"/>
     </extensions>
 
     <actions>
@@ -21,5 +22,11 @@
                class="com.github.tth05.minecraftnbtintellijplugin.actions.NBTFileEditorPopupGroup"
                popup="true">
         </group>
+        <action id="com.github.tth05.minecraftnbtintellijplugin.actions.CompareNBTFilesAction"
+                class="com.github.tth05.minecraftnbtintellijplugin.actions.CompareNBTFilesAction"
+                text="Compare NBT Files"
+                description="Compare two NBT files using diff view">
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+        </action>
     </actions>
 </idea-plugin>
